@@ -40,19 +40,20 @@ type InitializeResponse struct {
 
 // PopularityとStockはレスポンスに入れない
 type Chair struct {
-	ID          int64  `db:"id" json:"id"`
-	Name        string `db:"name" json:"name"`
-	Description string `db:"description" json:"description"`
-	Thumbnail   string `db:"thumbnail" json:"thumbnail"`
-	Price       int64  `db:"price" json:"price"`
-	Height      int64  `db:"height" json:"height"`
-	Width       int64  `db:"width" json:"width"`
-	Depth       int64  `db:"depth" json:"depth"`
-	Color       string `db:"color" json:"color"`
-	Features    string `db:"features" json:"features"`
-	Kind        string `db:"kind" json:"kind"`
-	Popularity  int64  `db:"popularity" json:"-"`
-	Stock       int64  `db:"stock" json:"-"`
+	ID             int64  `db:"id" json:"id"`
+	Name           string `db:"name" json:"name"`
+	Description    string `db:"description" json:"description"`
+	Thumbnail      string `db:"thumbnail" json:"thumbnail"`
+	Price          int64  `db:"price" json:"price"`
+	Height         int64  `db:"height" json:"height"`
+	Width          int64  `db:"width" json:"width"`
+	Depth          int64  `db:"depth" json:"depth"`
+	Color          string `db:"color" json:"color"`
+	Features       string `db:"features" json:"features"`
+	Kind           string `db:"kind" json:"kind"`
+	Popularity     int64  `db:"popularity" json:"-"`
+	Stock          int64  `db:"stock" json:"-"`
+	PopularityDesc int64  `db:"popularity_desc" json:"-"`
 }
 
 type ChairSearchResponse struct {
@@ -555,12 +556,12 @@ func searchChairs(c echo.Context) error {
 
 	// TODO 検索条件おおすぎる。Index効かせられるのか？
 
-	searchQuery := "SELECT * FROM chair FORCE INDEX (chair_popularity_index) WHERE "
+	searchQuery := "SELECT * FROM chair FORCE INDEX (chair_popularity_desc_index) WHERE "
 	countQuery := "SELECT COUNT(*) FROM chair WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
 
 	// TODO popularity DESCと id ACS、昇順降順の複合なのでExplainして確認すべき
-	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
+	limitOffset := " ORDER BY popularity_desc ASC, id ASC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
 	err = db.Get(&res.Count, countQuery+searchCondition, params...)
