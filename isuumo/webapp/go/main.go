@@ -631,6 +631,9 @@ func buyChair(c echo.Context) error {
 // 検索用につかえるパラメータを返却。
 // アプリの初期化時に静的ファイルから読み込んでるだけなので検索条件は固定。
 func getChairSearchCondition(c echo.Context) error {
+
+	c.Response().Header().Set("Cache-Control", "public, max-age=24H")
+
 	return c.JSON(http.StatusOK, chairSearchCondition)
 }
 
@@ -1022,6 +1025,8 @@ func postEstateRequestDocument(c echo.Context) error {
 // e.GET("/api/estate/search/condition", getEstateSearchCondition)
 // 検索条件の固定jsonを取得
 func getEstateSearchCondition(c echo.Context) error {
+
+	c.Response().Header().Set("Cache-Control", "public, max-age=24H")
 	return c.JSON(http.StatusOK, estateSearchCondition)
 }
 
