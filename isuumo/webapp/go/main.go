@@ -555,7 +555,7 @@ func searchChairs(c echo.Context) error {
 
 	// TODO 検索条件おおすぎる。Index効かせられるのか？
 
-	searchQuery := "SELECT * FROM chair WHERE "
+	searchQuery := "SELECT * FROM chair FORCE INDEX (chair_popularity_index) WHERE "
 	countQuery := "SELECT COUNT(*) FROM chair WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
 
