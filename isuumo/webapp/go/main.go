@@ -255,7 +255,7 @@ func main() {
 
 	// mainの先頭でtracerを設定。
 	tracer.Start(
-		tracer.WithDebugMode(true),
+		tracer.WithDebugMode(false),
 		tracer.WithRuntimeMetrics(),
 	)
 	defer tracer.Stop()
