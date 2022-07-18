@@ -34,6 +34,8 @@ create index estate_popularity_index
 create index estate_popularity_desc_index
 	on isuumo.estate (popularity_desc);
 
+alter table isuumo.estate add spatial index (point);
+
 CREATE TABLE isuumo.chair
 (
     id          INTEGER         NOT NULL PRIMARY KEY,

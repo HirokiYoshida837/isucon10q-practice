@@ -981,6 +981,12 @@ func searchEstateNazotte(c echo.Context) error {
 	// b := coordinates.getBoundingBox()
 	estatesInPolygon := []Estate{}
 
+	// DB側にpointカラムを増やさないのであればこうやる。
+	// 	query := fmt.Sprintf("SELECT * FROM estate "+
+	// "WHERE ST_Contains(ST_PolygonFromText(%s), ST_GeomFromText(CONCAT('POINT(', latitude, ' ', longitude, ')'))) "+
+	// "ORDER BY popularity DESC, id ASC LIMIT 50",
+	// coordinates.coordinatesToText())
+
 	query := fmt.Sprintf("SELECT * FROM estate "+
 		"WHERE ST_Contains(ST_PolygonFromText(%s), `point`) "+
 		"ORDER BY popularity DESC, id ASC LIMIT 50",
