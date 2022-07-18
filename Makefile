@@ -34,4 +34,4 @@ deploy: build
 .PHONY: bench
 bench:
 	cd /home/isucon/isuumo/bench ;\
-	./bench
+	./bench -target-url http://127.0.0.1
