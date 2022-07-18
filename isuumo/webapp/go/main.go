@@ -13,11 +13,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/labstack/gommon/log"
+
+	sqltrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/database/sql"
+	sqlxtrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/jmoiron/sqlx"
+	pechov3 "gopkg.in/DataDog/dd-trace-go.v1/contrib/labstack/echo"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 const Limit = 20
@@ -219,7 +225,11 @@ func getEnv(key, defaultValue string) string {
 //ConnectDB isuumoデータベースに接続する
 func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
 	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?interpolateParams=true", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
-	return sqlx.Open("mysql", dsn)
+	// return sqlx.Open("mysql", dsn)
+
+	// ここを追加。Driverは合わせる
+	sqltrace.Register("mysql", &mysql.MySQLDriver{}, sqltrace.WithServiceName("test-go-mysql"))
+	return sqlxtrace.Open("mysql", dsn)
 }
 
 func init() {
@@ -239,12 +249,22 @@ func init() {
 }
 
 func main() {
+
+	// mainの先頭でtracerを設定。
+	tracer.Start(
+		tracer.WithDebugMode(true),
+		tracer.WithRuntimeMetrics(),
+	)
+	defer tracer.Stop()
+
 	// Echo instance
 	e := echo.New()
 	e.Debug = false
 	e.Logger.SetLevel(log.ERROR)
 
 	// Middleware
+	e.Use(pechov3.Middleware(pechov3.WithServiceName("test-go")))
+
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
