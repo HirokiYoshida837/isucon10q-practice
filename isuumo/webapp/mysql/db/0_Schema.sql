@@ -17,11 +17,21 @@ CREATE TABLE isuumo.estate
     door_height INTEGER             NOT NULL,
     door_width  INTEGER             NOT NULL,
     features    VARCHAR(64)         NOT NULL,
-    popularity  INTEGER             NOT NULL
+    popularity  INTEGER             NOT NULL,
+    popularity_desc INTEGER AS (-popularity) NOT NULL
 );
+
+-- invisible column使いたいが、mysql8からでないとつかえない。json側でResponseに含めないようにする。
+-- reverseId INTEGER GENERATED ALWAYS AS (id*-1) でgenerated columnつくるのと何が違うんだろう
 
 create index estate_rent_index
 	on isuumo.estate (rent);
+
+create index estate_popularity_index
+	on isuumo.estate (popularity);
+
+create index estate_popularity_desc_index
+	on isuumo.estate (popularity_desc);
 
 CREATE TABLE isuumo.chair
 (
