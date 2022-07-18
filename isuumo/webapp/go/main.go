@@ -224,6 +224,7 @@ func getEnv(key, defaultValue string) string {
 
 //ConnectDB isuumoデータベースに接続する
 func (mc *MySQLConnectionEnv) ConnectDB() (*sqlx.DB, error) {
+	// プレースホルダ置換済
 	dsn := fmt.Sprintf("%v:%v@tcp(%v:%v)/%v?interpolateParams=true", mc.User, mc.Password, mc.Host, mc.Port, mc.DBName)
 	// return sqlx.Open("mysql", dsn)
 
@@ -265,6 +266,7 @@ func main() {
 	// Middleware
 	e.Use(pechov3.Middleware(pechov3.WithServiceName("test-go")))
 
+	// TODO ログミドルウェアの停止
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
@@ -304,6 +306,8 @@ func main() {
 	e.Logger.Fatal(e.Start(serverPort))
 }
 
+// 	e.POST("/initialize", initialize)
+// 初期化処理
 func initialize(c echo.Context) error {
 	sqlDir := filepath.Join("..", "mysql", "db")
 	paths := []string{
@@ -333,7 +337,11 @@ func initialize(c echo.Context) error {
 	})
 }
 
+//	e.GET("/api/chair/:id", getChairDetail)
+// 単体の椅子の詳細を取得
+// リクエスト数がかなり多い
 func getChairDetail(c echo.Context) error {
+	// TODO 更新頻度は少ないので、インメモリキャッシュできないか検討
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.Echo().Logger.Errorf("Request parameter \"id\" parse error : %v", err)
@@ -358,6 +366,9 @@ func getChairDetail(c echo.Context) error {
 	return c.JSON(http.StatusOK, chair)
 }
 
+//	e.POST("/api/chair", postChair)
+// 椅子を入稿。CSVで複数行が来ている
+// 入稿回数は初期は少ない
 func postChair(c echo.Context) error {
 	header, err := c.FormFile("chairs")
 	if err != nil {
@@ -382,6 +393,8 @@ func postChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
+
+	// TODO BulkInsert
 	for _, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
@@ -414,6 +427,9 @@ func postChair(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
+// 	e.GET("/api/chair/search", searchChairs)
+// いろんな検索条件をもとに椅子を検索。ページングもある。
+// リクエスト数がかなり多い
 func searchChairs(c echo.Context) error {
 	conditions := make([]string, 0)
 	params := make([]interface{}, 0)
@@ -522,9 +538,13 @@ func searchChairs(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
+	// TODO 検索条件おおすぎる。Index効かせられるのか？
+
 	searchQuery := "SELECT * FROM chair WHERE "
 	countQuery := "SELECT COUNT(*) FROM chair WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
+
+	// TODO popularity DESCと id ACS、昇順降順の複合なのでExplainして確認すべき
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res ChairSearchResponse
@@ -550,6 +570,8 @@ func searchChairs(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+// 	e.POST("/api/chair/buy/:id", buyChair)
+// 椅子の購入。売れたら椅子のストック数をへらす。
 func buyChair(c echo.Context) error {
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
@@ -602,10 +624,15 @@ func buyChair(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// 	e.GET("/api/chair/search/condition", getChairSearchCondition)
+// 検索用につかえるパラメータを返却。
+// アプリの初期化時に静的ファイルから読み込んでるだけなので検索条件は固定。
 func getChairSearchCondition(c echo.Context) error {
 	return c.JSON(http.StatusOK, chairSearchCondition)
 }
 
+// 	e.GET("/api/chair/low_priced", getLowPricedChair)
+// 安い順に椅子のリストを返す。20件固定？
 func getLowPricedChair(c echo.Context) error {
 	var chairs []Chair
 	query := `SELECT * FROM chair WHERE stock > 0 ORDER BY price ASC, id ASC LIMIT ?`
@@ -622,7 +649,11 @@ func getLowPricedChair(c echo.Context) error {
 	return c.JSON(http.StatusOK, ChairListResponse{Chairs: chairs})
 }
 
+// 	e.GET("/api/estate/:id", getEstateDetail)
+// 物件詳細を取得。
+// これもリクエスト数がかなり多い。
 func getEstateDetail(c echo.Context) error {
+	// 更新頻度すくないのでインメモリキャッシュでいけないか？
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.Echo().Logger.Infof("Request parameter \"id\" parse error : %v", err)
@@ -656,6 +687,9 @@ func getRange(cond RangeCondition, rangeID string) (*Range, error) {
 	return cond.Ranges[RangeIndex], nil
 }
 
+//	e.POST("/api/estate", postEstate)
+// 物件の入稿。CSVから
+// 入稿回数は初期は少ない
 func postEstate(c echo.Context) error {
 	header, err := c.FormFile("estates")
 	if err != nil {
@@ -680,6 +714,8 @@ func postEstate(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
+
+	// TODO BulkInsert
 	for _, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
@@ -711,6 +747,9 @@ func postEstate(c echo.Context) error {
 	return c.NoContent(http.StatusCreated)
 }
 
+// e.GET("/api/estate/search", searchEstates)
+// いくつかの条件から物件を検索する。ページングあり
+// リクエスト数がかなり多い
 func searchEstates(c echo.Context) error {
 	conditions := make([]string, 0)
 	params := make([]interface{}, 0)
@@ -793,6 +832,7 @@ func searchEstates(c echo.Context) error {
 	searchQuery := "SELECT * FROM estate WHERE "
 	countQuery := "SELECT COUNT(*) FROM estate WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
+	// TODO popularity DESCと id ASCの昇順、降順の複合なのでExplainでよく確認。
 	limitOffset := " ORDER BY popularity DESC, id ASC LIMIT ? OFFSET ?"
 
 	var res EstateSearchResponse
@@ -818,7 +858,10 @@ func searchEstates(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
+// e.GET("/api/estate/low_priced", getLowPricedEstate)
+// 安い物件20件を取得。
 func getLowPricedEstate(c echo.Context) error {
+	// TODO インメモリキャッシュ化できない？
 	estates := make([]Estate, 0, Limit)
 	query := `SELECT * FROM estate ORDER BY rent ASC, id ASC LIMIT ?`
 	err := db.Select(&estates, query, Limit)
@@ -834,6 +877,8 @@ func getLowPricedEstate(c echo.Context) error {
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
 
+// e.GET("/api/recommended_estate/:id", searchRecommendedEstateWithChair)
+// 椅子にあう物件のリストを取得する
 func searchRecommendedEstateWithChair(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -857,6 +902,8 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	w := chair.Width
 	h := chair.Height
 	d := chair.Depth
+
+	// TODO どういう複合条件？おちついて考えれば楽にできるかも。
 	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity DESC, id ASC LIMIT ?`
 	err = db.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
 	if err != nil {
@@ -870,6 +917,10 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	return c.JSON(http.StatusOK, EstateListResponse{Estates: estates})
 }
 
+// e.POST("/api/estate/nazotte", searchEstateNazotte)
+// アプリ地図上でなぞった多角形範囲の中にある物件のリストを検索する
+// nazotte検索。リクエスト数は少ないがかなり遅い
+// N+1問題
 func searchEstateNazotte(c echo.Context) error {
 	coordinates := Coordinates{}
 	err := c.Bind(&coordinates)
@@ -882,8 +933,11 @@ func searchEstateNazotte(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
+	// 多角形全体を囲むことができる四角形を考える
 	b := coordinates.getBoundingBox()
 	estatesInBoundingBox := []Estate{}
+
+	// BoundingBoxの中にある椅子を全件検索
 	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity DESC, id ASC`
 	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 	if err == sql.ErrNoRows {
@@ -894,6 +948,7 @@ func searchEstateNazotte(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
+	// BoundingBoxの中にある椅子全件について、多角形の中にあるかどうかを、MySQL側で判定してる？
 	estatesInPolygon := []Estate{}
 	for _, estate := range estatesInBoundingBox {
 		validatedEstate := Estate{}
@@ -915,6 +970,7 @@ func searchEstateNazotte(c echo.Context) error {
 
 	var re EstateSearchResponse
 	re.Estates = []Estate{}
+	// TODO あとでNazotteLimitで切ってるので、不要な分は上のfor文から除いてもいいかも。
 	if len(estatesInPolygon) > NazotteLimit {
 		re.Estates = estatesInPolygon[:NazotteLimit]
 	} else {
@@ -925,6 +981,8 @@ func searchEstateNazotte(c echo.Context) error {
 	return c.JSON(http.StatusOK, re)
 }
 
+// e.POST("/api/estate/req_doc/:id", postEstateRequestDocument)
+// 物件購入の資料請求
 func postEstateRequestDocument(c echo.Context) error {
 	m := echo.Map{}
 	if err := c.Bind(&m); err != nil {
@@ -958,6 +1016,8 @@ func postEstateRequestDocument(c echo.Context) error {
 	return c.NoContent(http.StatusOK)
 }
 
+// e.GET("/api/estate/search/condition", getEstateSearchCondition)
+// 検索条件の固定jsonを取得
 func getEstateSearchCondition(c echo.Context) error {
 	return c.JSON(http.StatusOK, estateSearchCondition)
 }
