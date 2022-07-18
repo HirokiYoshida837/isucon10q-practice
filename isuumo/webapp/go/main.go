@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -929,9 +930,25 @@ func searchRecommendedEstateWithChair(c echo.Context) error {
 	h := chair.Height
 	d := chair.Depth
 
+	tmpArray := []int64{}
+	tmpArray = append(tmpArray, w)
+	tmpArray = append(tmpArray, h)
+	tmpArray = append(tmpArray, d)
+
+	sort.Slice(tmpArray, func(i, j int) bool {
+		return tmpArray[i] < tmpArray[j]
+	})
+
+	min := tmpArray[0]
+	mid := tmpArray[1]
+
 	// TODO どういう複合条件？おちついて考えれば楽にできるかも。
-	query = `SELECT * FROM estate WHERE (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) ORDER BY popularity_desc ASC, id ASC LIMIT ?`
-	err = db.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
+	query = "SELECT * FROM estate WHERE" +
+		"(door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?)" +
+		// " (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?) OR (door_width >= ? AND door_height >= ?)" +
+		" ORDER BY popularity_desc ASC, id ASC LIMIT ?"
+	// err = db.Select(&estates, query, w, h, w, d, h, w, h, d, d, w, d, h, Limit)
+	err = db.Select(&estates, query, min, mid, mid, min, Limit)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return c.JSON(http.StatusOK, EstateListResponse{[]Estate{}})
