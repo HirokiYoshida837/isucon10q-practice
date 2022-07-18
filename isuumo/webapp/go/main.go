@@ -855,7 +855,7 @@ func searchEstates(c echo.Context) error {
 		return c.NoContent(http.StatusBadRequest)
 	}
 
-	searchQuery := "SELECT * FROM estate WHERE "
+	searchQuery := "SELECT * FROM estate FORCE INDEX (estate_popularity_desc_index) WHERE "
 	countQuery := "SELECT COUNT(*) FROM estate WHERE "
 	searchCondition := strings.Join(conditions, " AND ")
 	// TODO popularity DESCと id ASCの昇順、降順の複合なのでExplainでよく確認。 -> 対応済
@@ -965,6 +965,7 @@ func searchEstateNazotte(c echo.Context) error {
 
 	// BoundingBoxの中にある椅子を全件検索
 	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
+	// query := `SELECT * FROM estate FORCE INDEX (estate_popularity_desc_index) WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
 	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 	if err == sql.ErrNoRows {
 		c.Echo().Logger.Infof("select * from estate where latitude ...", err)
