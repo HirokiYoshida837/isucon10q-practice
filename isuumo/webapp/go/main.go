@@ -38,6 +38,7 @@ type InitializeResponse struct {
 	Language string `json:"language"`
 }
 
+// PopularityとStockはレスポンスに入れない
 type Chair struct {
 	ID          int64  `db:"id" json:"id"`
 	Name        string `db:"name" json:"name"`
@@ -50,10 +51,8 @@ type Chair struct {
 	Color       string `db:"color" json:"color"`
 	Features    string `db:"features" json:"features"`
 	Kind        string `db:"kind" json:"kind"`
-
-	// PopularityとStockはレスポンスに入れない
-	Popularity int64 `db:"popularity" json:"-"`
-	Stock      int64 `db:"stock" json:"-"`
+	Popularity  int64  `db:"popularity" json:"-"`
+	Stock       int64  `db:"stock" json:"-"`
 }
 
 type ChairSearchResponse struct {
@@ -66,6 +65,7 @@ type ChairListResponse struct {
 }
 
 //Estate 物件
+// Popularityはレスポンスに入れない
 type Estate struct {
 	ID          int64   `db:"id" json:"id"`
 	Thumbnail   string  `db:"thumbnail" json:"thumbnail"`
@@ -78,8 +78,7 @@ type Estate struct {
 	DoorHeight  int64   `db:"door_height" json:"doorHeight"`
 	DoorWidth   int64   `db:"door_width" json:"doorWidth"`
 	Features    string  `db:"features" json:"features"`
-	// Popularityはレスポンスに入れない
-	Popularity int64 `db:"popularity" json:"-"`
+	Popularity  int64   `db:"popularity" json:"-"`
 }
 
 //EstateSearchResponse estate/searchへのレスポンスの形式
@@ -390,14 +389,17 @@ func postChair(c echo.Context) error {
 		return c.NoContent(http.StatusInternalServerError)
 	}
 
-	tx, err := db.Begin()
+	tx, err := db.Beginx()
 	if err != nil {
 		c.Logger().Errorf("failed to begin tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
 	}
 	defer tx.Rollback()
 
-	// TODO BulkInsert
+	sqlStr := "INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES "
+	vals := []interface{}{}
+
+	// TODO BulkInsert -> 実装した
 	for _, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
@@ -417,12 +419,21 @@ func postChair(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		_, err := tx.Exec("INSERT INTO chair(id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock)
-		if err != nil {
-			c.Logger().Errorf("failed to insert chair: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
+
+		sqlStr += "(?,?,?,?,?,?,?,?,?,?,?,?,?),"
+		vals = append(vals, id, name, description, thumbnail, price, height, width, depth, color, features, kind, popularity, stock)
 	}
+
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	stmt, _ := tx.Prepare(sqlStr)
+	c.Logger().Errorf("start bulk insert")
+	_, err = stmt.Exec(vals...)
+
+	if err != nil {
+		c.Logger().Errorf("failed to insert chair: %v", err)
+		return c.NoContent(http.StatusInternalServerError)
+	}
+
 	if err := tx.Commit(); err != nil {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
