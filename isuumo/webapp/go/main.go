@@ -981,8 +981,8 @@ func searchEstateNazotte(c echo.Context) error {
 	estatesInBoundingBox := []Estate{}
 
 	// BoundingBoxの中にある椅子を全件検索
-	// query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
-	query := `SELECT * FROM estate FORCE INDEX (estate_popularity_desc_index) WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
+	query := `SELECT * FROM estate WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
+	// query := `SELECT * FROM estate FORCE INDEX (estate_popularity_desc_index) WHERE latitude <= ? AND latitude >= ? AND longitude <= ? AND longitude >= ? ORDER BY popularity_desc ASC, id ASC`
 	err = db.Select(&estatesInBoundingBox, query, b.BottomRightCorner.Latitude, b.TopLeftCorner.Latitude, b.BottomRightCorner.Longitude, b.TopLeftCorner.Longitude)
 	if err == sql.ErrNoRows {
 		c.Echo().Logger.Infof("select * from estate where latitude ...", err)
