@@ -732,7 +732,10 @@ func postEstate(c echo.Context) error {
 	}
 	defer tx.Rollback()
 
-	// TODO BulkInsert
+	sqlStr := "INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) VALUES "
+	vals := []interface{}{}
+
+	// TODO BulkInsert -> 実装済
 	for _, row := range records {
 		rm := RecordMapper{Record: row}
 		id := rm.NextInt()
@@ -751,12 +754,16 @@ func postEstate(c echo.Context) error {
 			c.Logger().Errorf("failed to read record: %v", err)
 			return c.NoContent(http.StatusBadRequest)
 		}
-		_, err := tx.Exec("INSERT INTO estate(id, name, description, thumbnail, address, latitude, longitude, rent, door_height, door_width, features, popularity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity)
-		if err != nil {
-			c.Logger().Errorf("failed to insert estate: %v", err)
-			return c.NoContent(http.StatusInternalServerError)
-		}
+
+		sqlStr += "(?,?,?,?,?,?,?,?,?,?,?,?),"
+		vals = append(vals, id, name, description, thumbnail, address, latitude, longitude, rent, doorHeight, doorWidth, features, popularity)
 	}
+
+	sqlStr = strings.TrimSuffix(sqlStr, ",")
+	stmt, _ := tx.Prepare(sqlStr)
+	c.Logger().Errorf("start bulk insert")
+	_, err = stmt.Exec(vals...)
+
 	if err := tx.Commit(); err != nil {
 		c.Logger().Errorf("failed to commit tx: %v", err)
 		return c.NoContent(http.StatusInternalServerError)
