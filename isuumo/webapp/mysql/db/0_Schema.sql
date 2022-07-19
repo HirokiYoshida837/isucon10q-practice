@@ -18,8 +18,8 @@ CREATE TABLE isuumo.estate
     door_width  INTEGER             NOT NULL,
     features    VARCHAR(64)         NOT NULL,
     popularity  INTEGER             NOT NULL,
-    popularity_desc INTEGER AS (-popularity),
-    `point`     POINT AS (ST_GeomFromText(CONCAT("POINT(", latitude, " ", longitude, ")"), 4326)) STORED
+    popularity_desc INTEGER AS (-popularity) NOT NULL,
+    `point`     POINT AS (POINT(latitude, longitude)) STORED NOT NULL
 );
 
 -- invisible column使いたいが、mysql8からでないとつかえない。json側でResponseに含めないようにする。
@@ -34,9 +34,7 @@ create index estate_popularity_index
 create index estate_popularity_desc_index
 	on isuumo.estate (popularity_desc);
 
--- ALTER TABLE isuumo.estate MODIFY `point` point NOT NULL;
-
--- alter table isuumo.estate add spatial index (point);
+alter table isuumo.estate add spatial index (point);
 
 CREATE TABLE isuumo.chair
 (
@@ -53,7 +51,7 @@ CREATE TABLE isuumo.chair
     kind        VARCHAR(64)     NOT NULL,
     popularity  INTEGER         NOT NULL,
     stock       INTEGER         NOT NULL,
-    popularity_desc INTEGER AS (-popularity)
+    popularity_desc INTEGER AS (-popularity) NOT NULL
 );
 
 create index chair_price_index
